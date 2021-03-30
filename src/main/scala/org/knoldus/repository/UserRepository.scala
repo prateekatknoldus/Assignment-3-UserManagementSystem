@@ -4,7 +4,6 @@ import org.knoldus.model.User
 
 import java.util.UUID
 import scala.collection.mutable.ListBuffer
-import scala.util.{Failure, Success, Try}
 
 // Implementation of UserRepository class having methods to perform the CRUD operations
 class UserRepository extends Dao[User] {

@@ -7,10 +7,11 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import java.util.UUID
 import org.scalatest.OptionValues
+import org.scalatest.concurrent.ScalaFutures.whenReady
 
 // class having Unit Test Cases for UserService class
 class UserServiceSpec extends AnyFlatSpec with Matchers with OptionValues {
-  val mockedUserRepository = mock[UserRepository]
+  val mockedUserRepository: UserRepository = mock[UserRepository]
   val userService = new UserService(mockedUserRepository)
 
   // Unit Test Cases for createUser method
@@ -20,16 +21,21 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with OptionValues {
     val newUser:User = User(None,"prateek", "12345", Type.Customer)
     when(mockedUserRepository.create(newUser)) thenReturn Some(UUID.randomUUID())
 
-    val newUserId = userService.createUser(newUser)
-    assert(newUserId.isDefined)
+    val newUserIdFuture = userService.createUser(newUser)
+    whenReady(newUserIdFuture){ newUserId =>
+      assert(newUserId.isDefined)
+    }
   }
 
   it should "not create a user if the ID has been provided by the user itself " in{
     val newUser:User = User(Some(UUID.randomUUID()),"shubham", "54321", Type.Admin)
     when(mockedUserRepository.create(newUser)) thenReturn None
 
-    val newUserId = userService.createUser(newUser)
-    assert(newUserId.isEmpty)
+    val newUserIdFuture = userService.createUser(newUser)
+    whenReady(newUserIdFuture) { newUserId =>
+      assert(newUserId.isEmpty)
+    }
+
   }
 
   // Unit Test Cases for getUserByID method
@@ -40,16 +46,18 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with OptionValues {
     val newUserId = UUID.randomUUID()
     when(mockedUserRepository.getByID(Some(newUserId))) thenReturn newUser.copy(id = Some(newUserId))
 
-    val retrievedUser = userService.getUserByID(Some(newUserId))
-    retrievedUser.id should contain(newUserId)
+    val retrievedUserFuture = userService.getUserByID(Some(newUserId))
+    whenReady(retrievedUserFuture){ retrievedUser=>
+      retrievedUser.id should contain(newUserId)
+    }
   }
 
   it should "throw NoSuchElementException if the given user ID does not exists" in{
     val randomId = Some(UUID.randomUUID())
     when(mockedUserRepository.getByID(randomId)) thenThrow new NoSuchElementException()
 
-    assertThrows[NoSuchElementException]{
-      userService.getUserByID(randomId)
+    whenReady(userService.getUserByID(randomId).failed){ exception =>
+      exception shouldBe a[NoSuchElementException]
     }
   }
 
@@ -62,8 +70,9 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with OptionValues {
 
     when(mockedUserRepository.update(userId,updatedUser)) thenReturn true
 
-    val isUserUpdated = userService.updateUser(userId,updatedUser)
-    assert(isUserUpdated)
+    whenReady(userService.updateUser(userId,updatedUser)){ isUserUpdated =>
+      assert(isUserUpdated)
+    }
   }
 
   it should "throw a NoSuchElementException if the given user ID does not exists" in{
@@ -71,10 +80,11 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with OptionValues {
     val updatedUser = User(Some(UUID.randomUUID()),"shubham", "54321", Type.Admin)
     when(mockedUserRepository.update(randomId,updatedUser)) thenThrow new NoSuchElementException()
 
-    assertThrows[NoSuchElementException]{
-      userService.updateUser(randomId,updatedUser)
+    whenReady(userService.updateUser(randomId,updatedUser).failed){ exception =>
+      exception shouldBe a[NoSuchElementException]
     }
   }
+
 
   // Unit Test Cases for deleteUser method
   behavior of "deleteUser method"
@@ -83,16 +93,17 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with OptionValues {
     val userId = Some(UUID.randomUUID())
     when(mockedUserRepository.delete(userId)) thenReturn true
 
-    val isUserDeleted = userService.deleteUser(userId)
-    assert(isUserDeleted)
+    whenReady(userService.deleteUser(userId)){ isUserDeleted =>
+      assert(isUserDeleted)
+    }
   }
 
   it should "throw a NoSuchElementException if the given user ID does not exists" in{
     val randomId = Some(UUID.randomUUID())
     when(mockedUserRepository.delete(randomId)) thenThrow new NoSuchElementException()
 
-    assertThrows[NoSuchElementException]{
-      userService.deleteUser(randomId)
+    whenReady(userService.deleteUser(randomId).failed){ exception =>
+      exception shouldBe a[NoSuchElementException]
     }
   }
 
@@ -101,12 +112,22 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "return a list of all the users" in{
     when(mockedUserRepository.getAll) thenReturn List(User(Some(UUID.randomUUID()),"shubham", "54321", Type.Admin),User(Some(UUID.randomUUID()),"prateek", "3021", Type.Customer))
-    assert(userService.getAllUsers.nonEmpty)
+
+    val usersListFuture = userService.getAllUsers
+
+    whenReady(usersListFuture){ usersList =>
+      assert(usersList.nonEmpty)
+    }
   }
 
   it should "return an empty list if no users exits in database" in{
     when(mockedUserRepository.getAll) thenReturn List.empty
-    assert(userService.getAllUsers.isEmpty)
+
+    val usersListFuture = userService.getAllUsers
+
+    whenReady(usersListFuture){ usersList =>
+      assert(usersList.isEmpty)
+    }
   }
 
 }

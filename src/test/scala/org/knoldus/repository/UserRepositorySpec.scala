@@ -3,7 +3,6 @@ package org.knoldus.repository
 import org.knoldus.model.{Type, User}
 import org.scalatest.BeforeAndAfter
 import org.scalatest.flatspec.AnyFlatSpec
-
 import java.util.UUID
 
 // class having Unit Test Cases for UserRepository class
